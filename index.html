@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Character Draw</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14111c;
+    --panel: #1d1926;
+    --panel-2: #251f33;
+    --line: #362f47;
+    --cream: #f4ecd8;
+    --dim: #a89bc2;
+    --pink: #ff3e78;
+    --pink-dim: #5e2438;
+    --cyan: #2de2c1;
+    --gold: #ffcc4d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--cream);
+    font-family:'Rubik',sans-serif;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width:960px;
+    margin:0 auto;
+    padding:32px 20px 80px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:.15em;
+    color:var(--cyan);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:56px;
+    letter-spacing:.03em;
+    margin:2px 0 28px;
+    color:var(--cream);
+    line-height:1;
+  }
+  h1 span{color:var(--pink);}
+
+  /* CRT STAGE */
+  .stage{
+    position:relative;
+    background:#0b0910;
+    border:3px solid #46394f;
+    border-radius:18px;
+    padding:14px;
+    box-shadow: inset 0 0 0 2px #000, 0 0 0 6px #1d1926;
+  }
+  .screen{
+    position:relative;
+    height:280px;
+    border-radius:10px;
+    overflow:hidden;
+    background: radial-gradient(ellipse at center, #241d33 0%, #0e0b16 100%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .scanlines{
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 1px, transparent 2px, transparent 3px);
+    pointer-events:none;
+    mix-blend-mode:overlay;
+  }
+  .vhs-tag{
+    position:absolute; top:10px; left:14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--cyan);
+    opacity:.8;
+    letter-spacing:.1em;
+  }
+  .rec{
+    position:absolute; top:10px; right:14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--pink);
+    letter-spacing:.1em;
+    display:flex; align-items:center; gap:6px;
+  }
+  .rec .dot{width:7px;height:7px;border-radius:50%;background:var(--pink);}
+  .static::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity:.5;
+    animation: staticmove .12s steps(2) infinite;
+  }
+  @keyframes staticmove{ from{transform:translate(0,0);} to{transform:translate(-3%,3%);} }
+
+  .empty-screen{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:22px;
+    color:var(--dim);
+    padding:0 30px;
+  }
+  .flip-name{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:34px;
+    color:var(--cream);
+    letter-spacing:.02em;
+  }
+  .flip-series{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--cyan);
+    margin-top:4px;
+  }
+  .result-card{
+    display:flex; align-items:center; gap:18px;
+    padding:0 24px;
+    width:100%;
+  }
+  .result-img{
+    width:110px; height:110px; border-radius:10px;
+    object-fit:cover;
+    border:2px solid var(--line);
+    background:var(--panel-2);
+    flex-shrink:0;
+  }
+  .result-text{text-align:left;}
+  .result-name{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:36px;
+    line-height:1;
+    color:var(--cream);
+  }
+  .result-series{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    color:var(--dim);
+    margin-top:6px;
+  }
+  .badge{
+    display:inline-block;
+    margin-top:8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    padding:3px 10px;
+    border-radius:20px;
+    text-transform:uppercase;
+  }
+  .badge.tag-niche{background:#12332f;color:var(--cyan);border:1px solid #1d4f47;}
+  .badge.tag-classic{background:#3a2410;color:var(--gold);border:1px solid #5c3a13;}
+  .badge.tag-current{background:#2b2740;color:var(--dim);border:1px solid var(--line);}
+  .badge.tag-manga{background:#331e33;color:var(--pink);border:1px solid #4d2a4a;}
+  .badge.tag-movie{background:#1a2e3a;color:#6fc7ff;border:1px solid #2a4a5c;}
+
+  .controls{
+    display:flex; justify-content:center; gap:12px;
+    margin-top:16px;
+  }
+  button{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    cursor:pointer;
+    border-radius:8px;
+    padding:12px 22px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--cream);
+    transition:transform .1s ease, background .15s ease;
+  }
+  button:hover{background:var(--panel-2);}
+  button:active{transform:scale(.97);}
+  .draw-btn{
+    background:var(--pink);
+    color:#2a0716;
+    border:1px solid var(--pink);
+    font-weight:700;
+  }
+  .draw-btn:hover{background:#ff5c8d;}
+  .draw-btn:disabled{opacity:.5; cursor:default;}
+
+  /* filter row */
+  .filter-row{
+    display:flex; gap:8px; margin:20px 0 10px; flex-wrap:wrap;
+    font-family:'JetBrains Mono',monospace; font-size:12px;
+  }
+  .chip{
+    padding:6px 12px; border-radius:20px; border:1px solid var(--line);
+    color:var(--dim); cursor:pointer; letter-spacing:.05em; text-transform:uppercase;
+  }
+  .chip.active{border-color:var(--pink); color:var(--pink); background:rgba(255,62,120,.08);}
+  .season-select{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    padding:6px 10px;
+    border-radius:20px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--cyan);
+  }
+  .filter-group{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  }
+  .filter-label{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim);
+    text-transform:uppercase; letter-spacing:.08em; margin-right:2px;
+  }
+
+  /* roster */
+  .roster-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-top:36px;
+  }
+  h2{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:26px;
+    color:var(--cream);
+    margin:0;
+  }
+  .count{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+    gap:12px;
+    margin-top:14px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px;
+    position:relative;
+  }
+  .card img{
+    width:100%; height:110px; object-fit:cover; border-radius:8px;
+    background:var(--panel-2);
+    display:block;
+  }
+  .card .noimg{
+    width:100%; height:110px; border-radius:8px;
+    background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--line);
+  }
+  .card .name{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:18px; margin-top:8px; color:var(--cream); line-height:1.1;
+  }
+  .card .series{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px; color:var(--dim); margin-top:2px;
+  }
+  .card .season-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; color:var(--cyan); margin-top:3px;
+  }
+  .del{
+    position:absolute; top:6px; right:6px;
+    width:22px; height:22px; border-radius:6px;
+    background:rgba(0,0,0,.5); color:var(--dim);
+    border:none; font-size:14px; line-height:1; padding:0;
+    display:none; align-items:center; justify-content:center;
+  }
+  .del:hover{color:var(--pink); background:rgba(0,0,0,.7);}
+  .edit-btn{
+    position:absolute; top:6px; right:32px;
+    width:22px; height:22px; border-radius:6px;
+    background:rgba(0,0,0,.5); color:var(--dim);
+    border:none; font-size:12px; line-height:1; padding:0;
+    display:none; align-items:center; justify-content:center;
+  }
+  .edit-btn:hover{color:var(--cyan); background:rgba(0,0,0,.7);}
+  .card.editing{border-color:var(--cyan);}
+  .wrap.manage-mode .del, .wrap.manage-mode .edit-btn{display:flex;}
+
+  /* add form */
+  .form-panel{
+    margin-top:36px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    display:none;
+  }
+  .wrap.manage-mode .form-panel{display:block;}
+  .manage-toggle-row{
+    display:flex; justify-content:flex-end;
+    margin-top:28px;
+  }
+  .manage-toggle{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--dim); background:none; border:1px solid var(--line);
+    padding:8px 14px; border-radius:8px;
+  }
+  .manage-toggle:hover{color:var(--cream); border-color:var(--border-strong,var(--line));}
+  .wrap.manage-mode .manage-toggle{color:var(--cyan); border-color:var(--cyan);}
+  .password-gate{
+    display:none;
+    justify-content:flex-end;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .password-gate.open{display:flex;}
+  .password-gate input{
+    max-width:180px;
+  }
+  .password-gate .gate-error{
+    width:100%;
+    text-align:right;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--pink);
+    min-height:14px;
+  }
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .field{display:flex; flex-direction:column; gap:5px;}
+  .field.full{grid-column:1/-1;}
+  label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim);
+  }
+  input, select{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:8px;
+    padding:9px 10px;
+    font-family:'Rubik',sans-serif;
+    font-size:14px;
+  }
+  input:focus, select:focus{outline:2px solid var(--pink); outline-offset:1px;}
+  .upload-row{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  .upload-row input[type="file"]{
+    flex:1; min-width:180px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    padding:8px;
+  }
+  #imgPreview{
+    width:56px; height:56px; border-radius:8px; object-fit:cover;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+  }
+  .form-actions{margin-top:14px; display:flex; justify-content:flex-end; gap:10px;}
+  .empty-roster{
+    color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:13px;
+    padding:20px 0;
+  }
+  @media (max-width:560px){
+    h1{font-size:40px;}
+    .form-grid{grid-template-columns:1fr;}
+    .result-card{flex-direction:column; text-align:center;}
+    .result-text{text-align:center;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">personal archive // character draw</div>
+  <h1>Roll the <span>tape</span>.</h1>
+
+  <div class="stage">
+    <div class="screen" id="screen">
+      <div class="scanlines"></div>
+      <div class="vhs-tag" id="vhsTag">CH 03</div>
+      <div class="rec" id="recTag"><span class="dot"></span>REC</div>
+      <div id="screenContent" class="empty-screen">No signal — add characters below, then hit draw.</div>
+    </div>
+    <div class="controls">
+      <button class="draw-btn" id="drawBtn" disabled>Draw</button>
+      <button id="resetBtn" style="display:none;">Redraw</button>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-group">
+      <span class="filter-label">Season</span>
+      <select class="season-select" id="seasonFilter"></select>
+    </div>
+    <div class="filter-group" id="filterRow"></div>
+  </div>
+
+  <div class="roster-head">
+    <h2>Roster</h2>
+    <span class="count" id="rosterCount">0 characters</span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="empty-roster" id="emptyRoster" style="display:none;">Nothing logged yet. This is where your cast will show up.</div>
+
+  <div class="manage-toggle-row">
+    <button class="manage-toggle" id="manageToggleBtn">Manage roster</button>
+  </div>
+  <div class="password-gate" id="passwordGate">
+    <input type="password" id="gatePassword" placeholder="Password" autocomplete="off" />
+    <button id="gateSubmit">Unlock</button>
+    <button id="gateCancel">Cancel</button>
+    <div class="gate-error" id="gateError"></div>
+  </div>
+
+  <div class="form-panel">
+    <h2 style="margin-bottom:14px;" id="formTitle">Log a character</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="fName">Name</label>
+        <input id="fName" type="text" placeholder="e.g. Yuki Morikawa" />
+      </div>
+      <div class="field">
+        <label for="fSeries">Anime / series</label>
+        <input id="fSeries" type="text" placeholder="e.g. Serial Experiments Lain" />
+      </div>
+      <div class="field">
+        <label for="fSeason">Season</label>
+        <select id="fSeason">
+          <option value="Winter">Winter</option>
+          <option value="Spring">Spring</option>
+          <option value="Summer">Summer</option>
+          <option value="Fall">Fall</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fYear">Year</label>
+        <input id="fYear" type="number" placeholder="e.g. 2016" min="1960" max="2100" />
+      </div>
+      <div class="field">
+        <label for="fTag">Category</label>
+        <select id="fTag">
+          <option value="niche">Niche</option>
+          <option value="classic">Old-school classic</option>
+          <option value="current">Popular</option>
+          <option value="manga">Manga-only</option>
+          <option value="movie">Movie-only</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="fImgFile">Character image (optional)</label>
+        <div class="upload-row">
+          <input id="fImgFile" type="file" accept="image/*" />
+          <img id="imgPreview" style="display:none;" alt="Preview" />
+          <button type="button" id="clearImgBtn" style="display:none;">Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button id="cancelEditBtn" style="display:none;">Cancel edit</button>
+      <button class="draw-btn" id="addBtn">Add to roster</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let characters = [];
+let activeFilter = 'all';
+let activeSeason = 'all';
+let spinning = false;
+let editingId = null;
+let pendingImage = '';
+
+function seasonKey(c){
+  return (c.season && c.year) ? (c.season + ' ' + c.year) : null;
+}
+
+function seasonSortValue(key){
+  const order = {Winter:0, Spring:1, Summer:2, Fall:3};
+  const [season, year] = key.split(' ');
+  return parseInt(year)*10 + order[season];
+}
+
+function loadCharacters(){
+  try{
+    const raw = localStorage.getItem('anime-roulette-characters');
+    characters = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    characters = [];
+  }
+  render();
+}
+
+function saveCharacters(){
+  try{
+    localStorage.setItem('anime-roulette-characters', JSON.stringify(characters));
+  }catch(e){
+    console.error('storage save failed', e);
+  }
+}
+
+function filteredList(){
+  return characters.filter(c=>{
+    const tagOk = activeFilter === 'all' || c.tag === activeFilter;
+    const seasonOk = activeSeason === 'all' || seasonKey(c) === activeSeason;
+    return tagOk && seasonOk;
+  });
+}
+
+function render(){
+  renderSeasonFilter();
+  renderFilters();
+  renderGrid();
+  renderStageState();
+}
+
+function renderSeasonFilter(){
+  const select = document.getElementById('seasonFilter');
+  const keys = Array.from(new Set(characters.map(seasonKey).filter(Boolean)));
+  keys.sort((a,b)=> seasonSortValue(a) - seasonSortValue(b));
+  const prev = activeSeason;
+  select.innerHTML = '<option value="all">All seasons</option>' +
+    keys.map(k=>`<option value="${escapeAttr(k)}">${escapeHtml(k)}</option>`).join('');
+  if(keys.includes(prev)){
+    select.value = prev;
+  } else {
+    activeSeason = 'all';
+    select.value = 'all';
+  }
+  select.onchange = ()=>{ activeSeason = select.value; render(); };
+}
+
+function renderFilters(){
+  const tags = ['all','niche','classic','current','manga','movie'];
+  const labels = {all:'All', niche:'Niche', classic:'Classic', current:'Popular', manga:'Manga-only', movie:'Movie-only'};
+  const row = document.getElementById('filterRow');
+  row.innerHTML = '';
+  tags.forEach(t=>{
+    const el = document.createElement('div');
+    el.className = 'chip' + (activeFilter===t ? ' active':'');
+    el.textContent = labels[t];
+    el.onclick = ()=>{ activeFilter = t; render(); };
+    row.appendChild(el);
+  });
+}
+
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyRoster');
+  const list = filteredList();
+  document.getElementById('rosterCount').textContent = characters.length + (characters.length===1 ? ' character' : ' characters');
+  grid.innerHTML = '';
+  if(list.length === 0){
+    empty.style.display = 'block';
+    grid.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.style.display = 'grid';
+  list.forEach(c=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    const imgHtml = c.image
+      ? `<img src="${escapeAttr(c.image)}" alt="${escapeAttr(c.name)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'${escapeJs(initials(c.name))}'}))">`
+      : `<div class="noimg">${initials(c.name)}</div>`;
+    card.innerHTML = `
+      <button class="del" title="Remove" data-id="${c.id}">&times;</button>
+      <button class="edit-btn" title="Edit" data-id="${c.id}">&#9998;</button>
+      ${imgHtml}
+      <div class="name">${escapeHtml(c.name)}</div>
+      <div class="series">${escapeHtml(c.series || '')}</div>
+      <div class="season-tag">${escapeHtml(seasonKey(c) || '')}</div>
+    `;
+    card.querySelector('.del').onclick = ()=> removeCharacter(c.id);
+    card.querySelector('.edit-btn').onclick = ()=> startEdit(c.id);
+    if(c.id === editingId) card.classList.add('editing');
+    grid.appendChild(card);
+  });
+}
+
+function renderStageState(){
+  const drawBtn = document.getElementById('drawBtn');
+  drawBtn.disabled = filteredList().length === 0 || spinning;
+}
+
+function initials(name){
+  return (name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeAttr(s){ return escapeHtml(s); }
+function escapeJs(s){ return (s||'').replace(/'/g,"\\'"); }
+
+function removeCharacter(id){
+  characters = characters.filter(c=>c.id !== id);
+  if(editingId === id) cancelEdit();
+  saveCharacters();
+  render();
+}
+
+function startEdit(id){
+  const c = characters.find(ch => ch.id === id);
+  if(!c) return;
+  editingId = id;
+  document.getElementById('fName').value = c.name || '';
+  document.getElementById('fSeries').value = c.series || '';
+  document.getElementById('fSeason').value = c.season || 'Winter';
+  document.getElementById('fYear').value = c.year || '';
+  document.getElementById('fTag').value = c.tag || 'niche';
+  pendingImage = c.image || '';
+  document.getElementById('fImgFile').value = '';
+  setPreview(pendingImage);
+  document.getElementById('formTitle').textContent = 'Edit character';
+  document.getElementById('addBtn').textContent = 'Save changes';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  document.querySelector('.form-panel').scrollIntoView({behavior:'smooth', block:'start'});
+  render();
+}
+
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('fName').value = '';
+  document.getElementById('fSeries').value = '';
+  document.getElementById('fYear').value = '';
+  pendingImage = '';
+  document.getElementById('fImgFile').value = '';
+  setPreview('');
+  document.getElementById('fSeason').value = 'Winter';
+  document.getElementById('fTag').value = 'niche';
+  document.getElementById('formTitle').textContent = 'Log a character';
+  document.getElementById('addBtn').textContent = 'Add to roster';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  render();
+}
+
+function setPreview(dataUrl){
+  const preview = document.getElementById('imgPreview');
+  const clearBtn = document.getElementById('clearImgBtn');
+  if(dataUrl){
+    preview.src = dataUrl;
+    preview.style.display = 'inline-block';
+    clearBtn.style.display = 'inline-block';
+  } else {
+    preview.src = '';
+    preview.style.display = 'none';
+    clearBtn.style.display = 'none';
+  }
+}
+
+function resizeImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxDim = 320;
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('fImgFile').onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const dataUrl = await resizeImageFile(file);
+    pendingImage = dataUrl;
+    setPreview(dataUrl);
+  }catch(err){
+    console.error('image processing failed', err);
+  }
+};
+
+document.getElementById('clearImgBtn').onclick = ()=>{
+  pendingImage = '';
+  document.getElementById('fImgFile').value = '';
+  setPreview('');
+};
+
+document.getElementById('cancelEditBtn').onclick = cancelEdit;
+
+const MANAGE_PASSWORD = 'ClaudiaSuki26';
+let unlocked = false;
+
+function enterManageMode(){
+  const wrap = document.querySelector('.wrap');
+  wrap.classList.add('manage-mode');
+  document.getElementById('manageToggleBtn').textContent = 'Done managing';
+  closeGate();
+  render();
+}
+
+function exitManageMode(){
+  const wrap = document.querySelector('.wrap');
+  wrap.classList.remove('manage-mode');
+  document.getElementById('manageToggleBtn').textContent = 'Manage roster';
+  if(editingId) cancelEdit();
+  render();
+}
+
+function openGate(){
+  document.getElementById('passwordGate').classList.add('open');
+  document.getElementById('gateError').textContent = '';
+  const input = document.getElementById('gatePassword');
+  input.value = '';
+  input.focus();
+}
+
+function closeGate(){
+  document.getElementById('passwordGate').classList.remove('open');
+  document.getElementById('gateError').textContent = '';
+  document.getElementById('gatePassword').value = '';
+}
+
+document.getElementById('manageToggleBtn').onclick = ()=>{
+  const wrap = document.querySelector('.wrap');
+  if(wrap.classList.contains('manage-mode')){
+    exitManageMode();
+  } else if(unlocked){
+    enterManageMode();
+  } else {
+    openGate();
+  }
+};
+
+document.getElementById('gateSubmit').onclick = ()=>{
+  const value = document.getElementById('gatePassword').value;
+  if(value === MANAGE_PASSWORD){
+    unlocked = true;
+    enterManageMode();
+  } else {
+    document.getElementById('gateError').textContent = 'Incorrect password.';
+    document.getElementById('gatePassword').value = '';
+    document.getElementById('gatePassword').focus();
+  }
+};
+
+document.getElementById('gateCancel').onclick = closeGate;
+
+document.getElementById('gatePassword').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('gateSubmit').click();
+});
+
+document.getElementById('addBtn').onclick = ()=>{
+  const name = document.getElementById('fName').value.trim();
+  const series = document.getElementById('fSeries').value.trim();
+  const season = document.getElementById('fSeason').value;
+  const year = document.getElementById('fYear').value.trim();
+  const tag = document.getElementById('fTag').value;
+  const image = pendingImage;
+  if(!name){
+    document.getElementById('fName').focus();
+    return;
+  }
+  if(editingId){
+    const idx = characters.findIndex(c => c.id === editingId);
+    if(idx !== -1){
+      characters[idx] = { ...characters[idx], name, series, season, year, tag, image };
+    }
+    editingId = null;
+    document.getElementById('formTitle').textContent = 'Log a character';
+    document.getElementById('addBtn').textContent = 'Add to roster';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+  } else {
+    characters.push({
+      id: 'c' + Date.now() + Math.random().toString(36).slice(2,7),
+      name, series, season, year, tag, image
+    });
+  }
+  document.getElementById('fName').value = '';
+  document.getElementById('fSeries').value = '';
+  document.getElementById('fYear').value = '';
+  pendingImage = '';
+  document.getElementById('fImgFile').value = '';
+  setPreview('');
+  saveCharacters();
+  render();
+};
+
+document.getElementById('drawBtn').onclick = ()=> spin();
+document.getElementById('resetBtn').onclick = ()=>{
+  document.getElementById('screenContent').innerHTML = '';
+  const screen = document.getElementById('screen');
+  screen.classList.remove('static');
+  document.getElementById('screenContent').className = 'empty-screen';
+  document.getElementById('screenContent').textContent = 'No signal — hit draw for another pull.';
+  document.getElementById('resetBtn').style.display = 'none';
+  renderStageState();
+};
+
+function spin(){
+  const pool = filteredList();
+  if(pool.length === 0 || spinning) return;
+  spinning = true;
+  document.getElementById('resetBtn').style.display = 'none';
+  renderStageState();
+  const screen = document.getElementById('screen');
+  const content = document.getElementById('screenContent');
+  screen.classList.add('static');
+  content.className = 'flip-name';
+
+  let ticks = 0;
+  const totalTicks = 18 + Math.floor(Math.random()*6);
+  const chNum = document.getElementById('vhsTag');
+
+  const interval = setInterval(()=>{
+    const pick = pool[Math.floor(Math.random()*pool.length)];
+    const flipMeta = [pick.series, seasonKey(pick)].filter(Boolean).join(' · ');
+    content.innerHTML = `${escapeHtml(pick.name)}<div class="flip-series">${escapeHtml(flipMeta)}</div>`;
+    chNum.textContent = 'CH ' + String(Math.floor(Math.random()*90)+1).padStart(2,'0');
+    ticks++;
+    if(ticks >= totalTicks){
+      clearInterval(interval);
+      landOn(pool[Math.floor(Math.random()*pool.length)]);
+    }
+  }, 90);
+}
+
+function landOn(winner){
+  const screen = document.getElementById('screen');
+  const content = document.getElementById('screenContent');
+  screen.classList.remove('static');
+  const tagLabels = {niche:'Niche', classic:'Classic', current:'Popular', manga:'Manga-only', movie:'Movie-only'};
+  const tagLabel = tagLabels[winner.tag] || '';
+  const resultMeta = [winner.series || 'unlisted series', seasonKey(winner)].filter(Boolean).join(' · ');
+  const imgHtml = winner.image
+    ? `<img class="result-img" src="${escapeAttr(winner.image)}" alt="${escapeAttr(winner.name)}" onerror="this.style.display='none'">`
+    : `<div class="result-img" style="display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--dim);">${initials(winner.name)}</div>`;
+  content.className = '';
+  content.innerHTML = `
+    <div class="result-card">
+      ${imgHtml}
+      <div class="result-text">
+        <div class="result-name">${escapeHtml(winner.name)}</div>
+        <div class="result-series">${escapeHtml(resultMeta)}</div>
+        ${tagLabel ? `<span class="badge tag-${winner.tag}">${tagLabel}</span>` : ''}
+      </div>
+    </div>
+  `;
+  spinning = false;
+  document.getElementById('resetBtn').style.display = 'inline-block';
+  renderStageState();
+}
+
+loadCharacters();
+</script>
+</body>
+</html>
